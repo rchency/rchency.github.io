@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>醫療習慣小遊戲</title>
+		<link href="css/bootstrap.css" rel="stylesheet">
+		<link href="css/bootstrap-responsive.css" rel="stylesheet">
+		<script   src="https://code.jquery.com/jquery-3.1.1.js"   integrity="sha256-16cdPddA6VdVInumRGo6IbivbERE8p7CQR3HzTBuELA="   crossorigin="anonymous"></script>
+		<script src="js/bootstrap.min.js"></script>
+		<script src="https://apis.google.com/js/api.js"></script>
+
+		<style>
+			.choice:hover {
+				outline: 1px solid blue;
+				cursor: pointer;
+			}
+			.active {
+				background-color: grey;
+			}
+			html,body{
+				overflow: hidden;
+			}
+			.page {
+				outline: 1px solid blue;
+				height: 100vh;
+				width: 100%;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<section id="landing">
+			<div id="start_page" class="page">
+				<h1>醫療習慣小遊戲</h1>
+				<p>醫療習慣因人而異, 錯誤的醫療習慣可以導致嚴重的後果.</p>
+				<p>看看你的醫療習慣跟其他人有沒有很大差別!</p>
+				<button type="button" class="btn btn-default" onclick="goToByScroll('situation');">開始</button>
+			</div>
+		</section>
+		<section id="questions">
+			<div id="situation" class="page">
+				<h1 id="situation_category">頭痛</h1>
+				<p id="situation_description">你今天早上起床以後就一直輕微頭痛, 直到中午亦沒有好轉.<p>
+				<img id="situation_image" src="">
+				<button type="button" class="btn btn-default" onclick="goToByScroll('treatment_method');">繼續</button>
+			</div>
+			<div id="treatment_method" name="DB_Treatment_ID" class="page">
+				<h1 id="treatment_scenario">假如你面對以上的情況, 你會怎樣做呢?</h1>
+				<div id="doctor_consultation" class="method choice" value=1>
+					<div>看醫生</div>
+					<img src="">
+				</div>
+				<div id="self_medication" class="method choice" value=2>
+					<div>自行診斷及治療</div>
+					<img src="">
+				</div>
+				<div id="no_treatment" class="method choice" value=3>
+					<div>不理會</div>
+					<img src="">
+				</div>
+				<button type="button" class="btn btn-default" onclick="goToByScroll('situation');">返回</button>
+				<button type="button" class="btn btn-default next_check" onclick="goToByScroll('treatment_reason');">繼續</button>
+			</div>
+			<div id="treatment_reason" name="DB_Treatment_Reason_ID" class="page">
+				<h1>為甚麼你會選擇這一種處理方法呢?</h1>
+				<div class="reason choice" value=11>
+					<div>認為是最有效改善不適的方法</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=12>
+					<div>擔心會是嚴重的疾病</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=21>
+					<div>認為情況不嚴重</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=22>
+					<div>經濟原因</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=23>
+					<div>看了醫生情況也沒有太大改善/不信任醫生</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=31>
+					<div>認為是正常的情況</div>
+					<img src="">
+				</div>
+				<div class="reason choice" value=32>
+					<div>無時間</div>
+					<img src="">
+				</div>
+				<button type="button" class="btn btn-default" onclick="goToByScroll('treatment_method');">返回</button>
+				<button type="button" class="btn btn-default next_check" onclick="goToByScroll('treatment_outcome');">繼續</button>
+			</div>
+			<div id="treatment_outcome" class="page">
+				<h1>你認為你所選擇的處理方法有效嗎?</h1>
+				<div name="DB_Treatment_Outcome_ID">
+					十分不同意
+					<input class="outcome choice" type="range" min="1" max="5" value="3" step="1">
+					十分同意
+				</div>
+				<h1>你滿意你所選擇的處理方法有效嗎?</h1>
+				<div name="DB_Treatment_Satisfaction_ID">
+					十分不滿意
+					<input class="satisfaction choice" type="range" min="1" max="5" value="3" step="1">
+					十分滿意
+				</div>
+				<button type="button" class="btn btn-default" onclick="goToByScroll('treatment_reason');">返回</button>
+				<button type="button" class="btn btn-default next_check" onclick="goToByScroll('result_presenstation');">繼續</button>
+			</div>
+		</section>
+		<section id="results">
+			<div id="result_presenstation" class="page">
+			</div>
+		</section>
+	</body>
+
+	<script>
+		//initialize result
+		var result
+		
+		$('.method').click(
+			function() {
+				update_method_display(this.getAttribute('value'));
+			}
+		);
+		$('.choice').click(
+			function() {
+				//append result object value
+				result[this.parentElement.getAttribute('name')] = parseInt($(this).attr('value'));
+				//change element formatting to show active element
+				var parent_e
+				if ($(this).prop('tagName') == 'INPUT') {
+					parent_e = this.parentElement.parentElement;
+				} else {
+					parent_e = this.parentElement;
+				};
+				$('.active', parent_e).removeClass('active');
+				//choices.removeClass('active');
+				this.classList.add('active');
+				//activate button
+				$('.next_check', parent_e).prop('disabled', false);
+			}
+		);
+		function update_method_display(method_code) {
+			console.log($('.reason'));
+			var reasons = $('.reason');
+			reasons.each(function() {
+				var val = this.getAttribute('value')
+				if (val[0]==method_code) {
+					this.style.display = 'block';
+				} else {
+					this.style.display = 'none';
+				};
+			});
+		}
+		function goToByScroll(id){
+			if (id == 'start_page') {
+				$('.next_check').prop('disabled', true);
+			};
+			// Remove "link" from the ID
+			id = id.replace("link", "");
+			// Scroll
+			$('html,body').animate({
+				scrollTop: $("#"+id).offset().top},
+				'slow');
+		}
+		$(document).ready(
+			function () {
+				//get to start page
+				goToByScroll('start_page');
+				//get response id and scenario id
+				
+				//initialize result object
+				result = {
+					'DB_Response_ID': 1,//response_id,
+					'DB_Scenario_ID': 1,//scenario_id,
+					'DB_Treatment_ID': null,
+					'DB_Treatment_Reason_ID': null,
+					'DB_Treatment_Outcome_ID': null,
+					'DB_Treatment_Satisfaction_ID': null
+				};
+			}
+		);
+	</script>
+	
+	<script>
+		function onLoadFn() {console.log('load api');}
+		gapi.load("client", onLoadFn);
+	</script>
+
+</html>
