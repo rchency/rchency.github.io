@@ -339,10 +339,12 @@
 					obj['Treatment_Reason'] = translation_dict[obj['DB_Treatment_Reason_ID']];
 					raw_data.push(obj);
 				};
+				init_chart();
 				console.log('raw_data fetched');
 			});
 		}
-		function init_pie_chart() {
+		function init_chart() {
+			//pie chart
 			method_f_chart = dc.pieChart('#method_f_chart');
 			reason_f_chart = dc.pieChart('#reason_f_chart');
 			//cross filter
@@ -367,8 +369,8 @@
 				.dimension(reason_dimension)
 				.group(reason_count);
 			dc.renderAll()
-		}
-		function init_bar_chart() {
+
+			//bar chart
 			outcome_avg_chart = dc.barChart('#outcome_avg_chart');
 			satisfaction_avg_chart = dc.barChart('#satisfaction_avg_chart');
 			//cross filter
