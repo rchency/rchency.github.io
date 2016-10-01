@@ -7,7 +7,8 @@
 		<link href="css/bootstrap-responsive.css" rel="stylesheet">
 		<script   src="https://code.jquery.com/jquery-3.1.1.js"   integrity="sha256-16cdPddA6VdVInumRGo6IbivbERE8p7CQR3HzTBuELA="   crossorigin="anonymous"></script>
 		<script src="js/bootstrap.min.js"></script>
-		<script src="https://apis.google.com/js/api.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/3.4.1/firebase.js"></script>
+
 
 		<style>
 			.choice:hover {
@@ -118,6 +119,25 @@
 	</body>
 
 	<script>
+		// Initialize Firebase
+		var config = {
+			apiKey: "AIzaSyBrNRV6e8BjhTSjR2BVihvvbLtzJgZfsBU",
+			authDomain: "ccfyp-71314.firebaseapp.com",
+			databaseURL: "https://ccfyp-71314.firebaseio.com",
+			storageBucket: "ccfyp-71314.appspot.com",
+			messagingSenderId: "462255308732"
+		};
+		firebase.initializeApp(config);
+		
+		// Get a reference to the database service
+		var database = firebase.database();
+		var questions_db = database.ref('Questions');
+		database.ref().on('value', function(snapshot) {
+			console.log(snapshot.val());
+		});
+	</script>
+	
+	<script>
 		//initialize result
 		var result
 		
@@ -186,9 +206,6 @@
 		);
 	</script>
 	
-	<script>
-		function onLoadFn() {console.log('load api');}
-		gapi.load("client", onLoadFn);
-	</script>
+
 
 </html>
