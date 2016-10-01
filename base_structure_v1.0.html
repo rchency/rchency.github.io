@@ -8,7 +8,10 @@
 		<script   src="https://code.jquery.com/jquery-3.1.1.js"   integrity="sha256-16cdPddA6VdVInumRGo6IbivbERE8p7CQR3HzTBuELA="   crossorigin="anonymous"></script>
 		<script src="js/bootstrap.min.js"></script>
 		<script src="https://www.gstatic.com/firebasejs/3.4.1/firebase.js"></script>
-
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js" charset="utf-8"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter/1.3.12/crossfilter.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dc/1.7.5/dc.js"></script>
+		<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/dc/1.7.5/dc.css"/>
 
 		<style>
 			.choice:hover {
@@ -40,8 +43,8 @@
 		</section>
 		<section id="questions">
 			<div id="situation" class="page">
-				<h1 id="situation_category">頭痛</h1>
-				<p id="situation_description">你今天早上起床以後就一直輕微頭痛, 直到中午亦沒有好轉.<p>
+				<h1 id="situation_category">&bsp;</h1>
+				<p id="situation_description">&bsp;<p>
 				<img id="situation_image" src="">
 				<button type="button" class="btn btn-default" onclick="goToByScroll('treatment_method');">繼續</button>
 			</div>
@@ -109,11 +112,15 @@
 					十分滿意
 				</div>
 				<button type="button" class="btn btn-default" onclick="goToByScroll('treatment_reason');">返回</button>
-				<button type="button" class="btn btn-default next_check" onclick="goToByScroll('result_presenstation');">繼續</button>
+				<button type="button" class="btn btn-default next_check" onclick="save_answer();get_raw_results();goToByScroll('result_presenstation');">繼續</button>
 			</div>
 		</section>
 		<section id="results">
 			<div id="result_presenstation" class="page">
+				<div id="method_f_chart"></div>
+				<div id="reason_f_chart"></div>
+				<div id="outcome_avg_chart"></div>
+				<div id="satisfaction_avg_chart"></div>
 			</div>
 		</section>
 	</body>
@@ -129,18 +136,110 @@
 		};
 		firebase.initializeApp(config);
 		
+		//user credentials
+		var uid
+		firebase.auth().signInAnonymously();
+		firebase.auth().onAuthStateChanged(function(user) {
+			if (user) {
+				// User is signed in.
+				uid = user.uid;
+				// ...
+			} else {
+				// User is signed out.
+				// ...
+			};
+			// ...
+		});
 		// Get a reference to the database service
 		var database = firebase.database();
 		var questions_db = database.ref('Questions');
-		database.ref().on('value', function(snapshot) {
-			console.log(snapshot.val());
+		var answers_db = database.ref('Answers');
+		var translation_dict = {}
+		database.ref('Translation').once('value').then(function(snapshot) {translation_dict=snapshot.val()})
+		
+		//initialize scenario
+		questions_db.once('value').then(function(snapshot) {
+			var question_id = Math.floor(Math.random() * snapshot.numChildren()) + 1
+			result['DB_Scenario_ID'] = question_id;
+			var question_symptom = snapshot.child(question_id+'/Symptoms').val();
+			var question_description = snapshot.child(question_id+'/Description').val();
+			$('#situation_category').text(question_symptom);
+			$('#situation_description').text(question_description);
 		});
+		
+		//
+		function save_answer() {
+			answers_db.child(uid).set(result);
+			console.log('save answer');
+		}
 	</script>
 	
 	<script>
-		//initialize result
+		//initialize result templates
 		var result
+		var a_results
+		var result_template = {
+			'DB_Scenario_ID': null,
+			'DB_Treatment_ID': null,
+			'DB_Treatment_Reason_ID': null,
+			'DB_Treatment_Outcome_ID': null,
+			'DB_Treatment_Satisfaction_ID': null
+		};
+		var a_results_template ={
+			1: {
+				11: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					},
+				12: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					}
+			},
+			2: {
+				21: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					},
+				22: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					},
+				23: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					}
+			},
+			3: {
+				31: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					},
+				32: {
+						'Satisfaction': {1:0,2:0,3:0,4:0,5:0},
+						'Outcome': {1:0,2:0,3:0,4:0,5:0}
+					}
+			}
+		};
 		
+		//display aggregate results
+		function aggregate_results() {
+			a_results = jQuery.extend(true, {}, a_results_template);
+			answers_db.orderByChild('DB_Scenario_ID').equalTo(result['DB_Scenario_ID']).once('value').then(function(snapshot) {
+				values = snapshot.val();
+				for (i in values) {
+					var child = values[i]
+					var a_treatment = a_results[child['DB_Treatment_ID']][child['DB_Treatment_Reason_ID']];
+					a_treatment['Satisfaction'][child['DB_Treatment_Satisfaction_ID']] += 1;
+					a_treatment['Outcome'][child['DB_Treatment_Outcome_ID']] += 1;
+				};
+			});
+		}
+		
+		
+		
+		
+		//update content
 		$('.method').click(
 			function() {
 				update_method_display(this.getAttribute('value'));
@@ -152,16 +251,21 @@
 				result[this.parentElement.getAttribute('name')] = parseInt($(this).attr('value'));
 				//change element formatting to show active element
 				var parent_e
+				var activate_btn_boo = false
 				if ($(this).prop('tagName') == 'INPUT') {
 					parent_e = this.parentElement.parentElement;
+					this.classList.add('active');
+					if ($('.choice', parent_e).length == $('.active', parent_e).length) {activate_btn_boo = true};
 				} else {
 					parent_e = this.parentElement;
+					$('.active', parent_e).removeClass('active');
+					//choices.removeClass('active');
+					this.classList.add('active');
+					activate_btn_boo = true
 				};
-				$('.active', parent_e).removeClass('active');
-				//choices.removeClass('active');
-				this.classList.add('active');
+
 				//activate button
-				$('.next_check', parent_e).prop('disabled', false);
+				if (activate_btn_boo) {$('.next_check', parent_e).prop('disabled', false);};
 			}
 		);
 		function update_method_display(method_code) {
@@ -191,21 +295,139 @@
 			function () {
 				//get to start page
 				goToByScroll('start_page');
-				//get response id and scenario id
-				
 				//initialize result object
-				result = {
-					'DB_Response_ID': 1,//response_id,
-					'DB_Scenario_ID': 1,//scenario_id,
-					'DB_Treatment_ID': null,
-					'DB_Treatment_Reason_ID': null,
-					'DB_Treatment_Outcome_ID': null,
-					'DB_Treatment_Satisfaction_ID': null
-				};
+				result = jQuery.extend(true, {}, result_template);
+				//initialize a_results object
+				a_results = jQuery.extend(true, {}, a_results_template);
 			}
 		);
+		
+
+		
 	</script>
 	
+	<script>
+		function test() {
+			result['DB_Scenario_ID']=1;
+			get_raw_results();
+			goToByScroll('result_presenstation');
+			chart = dc.pieChart("#method_f_chart");
+		}
+		var raw_data;
+		var pie_ndx;
+		var bar_ndx;
+		var method_dimension;
+		var reason_dimension;
+		var method_dimension_bar;
+		var reason_dimension_bar;
+		var method_count;	
+		var reason_count;
+		var method_avg;
+		var method_f_chart;
+		var reason_f_chart;
+		var outcome_avg_chart;
+		var satisfaction_avg_chart;
 
+		function get_raw_results() {
+			answers_db.orderByChild('DB_Scenario_ID').equalTo(result['DB_Scenario_ID']).once('value').then(function(snapshot) {
+				raw_data = [];
+				snapshot_val = snapshot.val();
+				for (i in snapshot_val) {
+					var obj = jQuery.extend(true, {}, snapshot_val[i]);
+					//translate id
+					obj['Treatment_Method'] = translation_dict[obj['DB_Treatment_ID']];
+					obj['Treatment_Reason'] = translation_dict[obj['DB_Treatment_Reason_ID']];
+					raw_data.push(obj);
+				};
+				console.log('raw_data fetched');
+			});
+		}
+		function init_pie_chart() {
+			method_f_chart = dc.pieChart('#method_f_chart');
+			reason_f_chart = dc.pieChart('#reason_f_chart');
+			//cross filter
+			pie_ndx = crossfilter(raw_data);
+			method_dimension = pie_ndx.dimension(function(d) {return d.Treatment_Method});
+			reason_dimension = pie_ndx.dimension(function(d) {return d.Treatment_Reason});
+			method_count = method_dimension.group().reduceCount();
+			reason_count = reason_dimension.group().reduceCount();
+			//define chart elements
+			method_f_chart
+				.width(400)
+				.height(300)
+				.slicesCap(4)
+				.innerRadius(100)
+				.dimension(method_dimension)
+				.group(method_count);
+			reason_f_chart
+				.width(400)
+				.height(300)
+				.slicesCap(4)
+				.innerRadius(100)
+				.dimension(reason_dimension)
+				.group(reason_count);
+			dc.renderAll()
+		}
+		function init_bar_chart() {
+			outcome_avg_chart = dc.barChart('#outcome_avg_chart');
+			satisfaction_avg_chart = dc.barChart('#satisfaction_avg_chart');
+			//cross filter
+			bar_ndx = crossfilter(raw_data);
+			method_dimension_bar = bar_ndx.dimension(function(d) {return d.Treatment_Method});
+			reason_dimension_bar = bar_ndx.dimension(function(d) {return d.Treatment_Reason});
+			
+			method_avg = method_dimension_bar.group().reduce(
+				//add
+				function(p, v) {
+					p.count += 1;
+					p.sum_outcome += v.DB_Treatment_Outcome_ID;
+					p.sum_satisfaction += v.DB_Treatment_Satisfaction_ID;
+					p.avg_outcome = p.sum_outcome/p.count;
+					p.avg_satisfaction = p.sum_satisfaction/p.count;
+					return p;
+				},
+				//remove
+				function(p, v) {
+					p.count -= 1;
+					p.sum_outcome -= v.DB_Treatment_Outcome_ID;
+					p.sum_satisfaction -= v.DB_Treatment_Satisfaction_ID;
+					p.avg_outcome = p.sum_outcome/p.count;
+					p.avg_satisfaction = p.sum_satisfaction/p.count;
+					return p;
+				},
+				//init
+				function() {
+					return {count: 0, sum_outcome: 0, sum_satisfaction: 0, avg_outcome: 0, avg_satisfaction: 0};
+				}
+			);
+			
+			x_domain = [];
+			method_avg.all().forEach(function(e) {x_domain.push(e.key)});
+			
+			outcome_avg_chart
+				.width(400)
+				.height(300)
+				.dimension(method_dimension_bar)
+				.group(method_avg)
+				.keyAccessor(function(p) {return p.key})
+				.valueAccessor(function(p) {return p.value.avg_outcome;})
+				.y(d3.scale.linear().domain([0,5]))
+				.x(d3.scale.ordinal().domain(x_domain))
+				.xUnits(dc.units.ordinal);
+				
+			satisfaction_avg_chart
+				.width(400)
+				.height(300)
+				.dimension(method_dimension_bar)
+				.group(method_avg)
+				.keyAccessor(function(p) {return p.key})
+				.valueAccessor(function(p) {return p.value.avg_satisfaction;})
+				.y(d3.scale.linear().domain([0,5]))
+				.x(d3.scale.ordinal().domain(x_domain))
+				.xUnits(dc.units.ordinal);
+				
+			dc.renderAll();
+		}
+	</script>
 
 </html>
